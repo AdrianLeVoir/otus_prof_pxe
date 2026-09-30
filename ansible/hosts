@@ -1,0 +1,7 @@
+[pxeserver]
+pxeserver ansible_host=192.168.1.155
+
+[all:vars]
+ansible_user=adrianl
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+ansible_python_interpreter=/usr/bin/python3

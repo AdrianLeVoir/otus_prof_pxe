@@ -1,0 +1,137 @@
+---
+- name: Настройка PXE-сервера (DHCP + TFTP + HTTP + автоустановка Ubuntu 24.04)
+  hosts: pxeserver
+  become: true
+  vars:
+    pxe_iface: enp6s19
+    pxe_server_ip: 10.0.0.20
+    pxe_range_start: 10.0.0.100
+    pxe_range_end: 10.0.0.120
+    tftp_root: /srv/tftp/amd64
+    http_root: /srv
+
+  tasks:
+    - name: Отключить ufw
+      systemd:
+        name: ufw
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Установить пакеты dnsmasq и apache2
+      apt:
+        name:
+          - dnsmasq
+          - apache2
+          - tftp-hpa
+        state: present
+        update_cache: true
+
+    - name: Создать каталоги PXE
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /srv/tftp
+        - /srv/images
+        - /srv/ks
+
+    - name: Конфигурация dnsmasq (DHCP + TFTP)
+      template:
+        src: ../templates/dnsmasq-pxe.conf.j2
+        dest: /etc/dnsmasq.d/pxe.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Конфигурация VirtualHost apache (images + ks)
+      template:
+        src: ../templates/ks-server.conf.j2
+        dest: /etc/apache2/sites-available/ks-server.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Включить сайт ks-server
+      command: a2ensite ks-server.conf
+      args:
+        creates: /etc/apache2/sites-enabled/ks-server.conf
+
+    - name: Отключить сайт по умолчанию
+      command: a2dissite 000-default.conf
+      failed_when: false
+
+    - name: Скачать netboot-образ (TFTP)
+      unarchive:
+        src: "{{ netboot_url }}"
+        dest: /srv/tftp
+        remote_src: true
+        creates: /srv/tftp/amd64/pxelinux.0
+
+    - name: Скачать ISO Ubuntu 24.04 (HTTP-репозиторий)
+      get_url:
+        url: "{{ iso_url }}"
+        dest: /srv/images/noble-live-server-amd64.iso
+        mode: "0644"
+        force: false
+
+    - name: pxelinux.cfg/default (BIOS-загрузка + автоустановка)
+      template:
+        src: ../templates/pxelinux-default.j2
+        dest: /srv/tftp/amd64/pxelinux.cfg/default
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: grub.cfg (UEFI-загрузка + автоустановка)
+      template:
+        src: ../templates/grub.cfg.j2
+        dest: /srv/tftp/amd64/grub/grub.cfg
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Копия grub.cfg в корне TFTP (для UEFI-пути)
+      copy:
+        src: ../templates/grub.cfg.j2
+        dest: /srv/tftp/amd64/grub.cfg
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Файл автоустановки user-data
+      template:
+        src: ../templates/user-data.j2
+        dest: /srv/ks/user-data
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Файл метаданных meta-data
+      copy:
+        content: ""
+        dest: /srv/ks/meta-data
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Файл vendor-data
+      copy:
+        content: ""
+        dest: /srv/ks/vendor-data
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Перезапустить dnsmasq
+      systemd:
+        name: dnsmasq
+        state: restarted
+        enabled: true
+
+    - name: Перезапустить apache2
+      systemd:
+        name: apache2
+        state: restarted
+        enabled: true

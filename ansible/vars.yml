@@ -1,0 +1,4 @@
+# TFTP
+netboot_url: http://cdimage.ubuntu.com/ubuntu-server/noble/daily-live/current/noble-netboot-amd64.tar.gz
+# HTTP-репозиторий с ISO
+iso_url: http://cdimage.ubuntu.com/ubuntu-server/noble/daily-live/current/noble-live-server-amd64.iso

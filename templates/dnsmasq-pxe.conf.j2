@@ -1,0 +1,19 @@
+# dnsmasq: DHCP + TFTP для PXE
+interface={{ pxe_iface }}
+bind-interfaces
+except-interface=lo
+
+# Диапазон выдаваемых адресов
+dhcp-range={{ pxe_iface }},{{ pxe_range_start }},{{ pxe_range_end }},12h
+
+# BIOS-загрузка (Legacy)
+dhcp-boot=pxelinux.0
+
+# UEFI-загрузка
+dhcp-match=set:efi-x86_64,option:client-arch,7
+dhcp-boot=tag:efi-x86_64,bootx64.efi
+dhcp-option=tag:efi-x86_64,option:tftp-server,{{ pxe_server_ip }}
+
+# TFTP-сервер
+enable-tftp
+tftp-root={{ tftp_root }}

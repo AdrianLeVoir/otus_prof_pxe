@@ -1,0 +1,5 @@
+DEFAULT install
+LABEL install
+    KERNEL linux
+    INITRD initrd
+    APPEND root=/dev/ram0 ramdisk_size=3000000 ip=dhcp iso-url=http://{{ pxe_server_ip }}/srv/images/noble-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ pxe_server_ip }}/srv/ks/

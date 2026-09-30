@@ -1,0 +1,44 @@
+#cloud-config
+autoinstall:
+  version: 1
+  apt:
+    disable_components: []
+    geoip: true
+    preserve_sources_list: false
+    primary:
+      - arches: [amd64, i386]
+        uri: http://archive.ubuntu.com/ubuntu
+  drivers:
+    install: false
+  identity:
+    hostname: linux
+    password: "$6$sJgo6Hg5zXBwkkI8$8AjjiBbaoyQelpLgOtbDpiQalCwLT6IOXU0rSLgSIcutRP3pUguzdobO3VRpml6CV5TeWLqT0XszqIccNdar/1"
+    realname: otus
+    username: otus
+  kernel:
+    package: linux-generic
+  keyboard:
+    layout: us
+  locale: en_US.UTF-8
+  network:
+    version: 2
+    ethernets:
+      ens18:
+        dhcp4: true
+  ssh:
+    allow-pw: true
+    authorized-keys: []
+    install-server: true
+  shutdown: poweroff
+  updates: security
+  storage:
+    layout:
+      name: direct
+      match:
+        size: largest
+  late-commands:
+    # grub ставим под фактический firmware: UEFI -> ESP (fallback-путь BOOTX64.EFI),
+    # BIOS -> MBR/bios_grub раздел. Это делает один и тот же user-data пригодным
+    # для обоих режимов загрузки клиента.
+    - sh -c 'if [ -d /sys/firmware/efi ]; then curtin in-target --target=/target -- grub-install --target=x86_64-efi --recheck --removable; else curtin in-target --target=/target -- grub-install --target=i386-pc --recheck /dev/sda; fi'
+    - curtin in-target --target=/target -- update-grub
